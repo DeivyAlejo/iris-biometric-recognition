@@ -1,11 +1,12 @@
 import cv2 as cv
 import os
 import glob
+import numpy as np
 import preprocessing_image
 
 for i in range(20):
-    dir = f"dataset/{i+1}/D/*.tiff"
-    print(dir)
+    dir = f"dataset/{i+1}/*.tiff"
+    # print(dir)
 
     path = glob.glob(dir)
     for img in path:
@@ -14,14 +15,32 @@ for i in range(20):
         # b,g,r = cv.split(image)
 
         circle = preprocessing_image.detect_iris(image)
-        if circle is not None:
-            print(circle)
-            # draw the outer circle
-            cv.circle(image,(circle[0],circle[1]),circle[2],(0,255,0),2)
-            # draw the center of the circle
-            cv.circle(image,(circle[0],circle[1]),2,(0,0,255),3)
 
-        cv.imwrite(f"dataset/{i+1}/D/{base_name}.jpg", image)
+        if circle is not None:
+            x, y, r = map(int, circle)
+            h, w = image.shape[:2]
+
+            x1 = max(x - r, 0)
+            y1 = max(y - r, 0)
+            x2 = min(x + r, w)
+            y2 = min(y + r, h)
+
+            cropped = image[y1:y2, x1:x2].copy()
+            if cropped.size == 0:
+                print(f"Invalid crop for {img}, saving original image.")
+                output = image
+            else:
+                mask = np.zeros(cropped.shape[:2], dtype=np.uint8)
+                cx = x - x1
+                cy = y - y1
+                cv.circle(mask, (cx, cy), r, 255, -1)
+                output = cv.bitwise_and(cropped, cropped, mask=mask)
+
+        else:
+            print(f"No iris detected in {img}")
+            output = image
+
+        cv.imwrite(f"dataset/{i+1}/{base_name}.jpg", output)
         # cv.imshow(img, image)
 
         # cv.waitKey(0)
