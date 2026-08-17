@@ -2,3 +2,6 @@ dataset/
 .DS_Store
 *.tiff
 __pycache__/
+.venv/
+clean_dataset.py
+tok.txt
