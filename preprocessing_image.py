@@ -5,20 +5,55 @@ from matplotlib import pyplot as plt
 
 def detect_pupil(image):
     b,g,r = cv.split(image)
-    g_blurred = cv.GaussianBlur(g,(43,43),7)
-    circles = cv.HoughCircles(g_blurred,cv.HOUGH_GRADIENT,1,10,
-                            param1=10,param2=10,minRadius=15,maxRadius=45)
-    # if circles is not None:
-    #     circles = np.uint16(np.around(circles))
-    #     return circles[0][0]
+
+    layer = r
+
+    low, high = np.percentile(layer, (1, 99))
     
-    return circles
+    # Normalize and clip to [0, 1]
+    gray_norm = np.clip(
+        (layer.astype(np.float32) - low) / (high - low),
+        0,
+        1
+    )
+
+    # Apply gamma = 0.5
+    grayp = np.power(gray_norm, 0.5)
+
+    # Convert back to uint8 [0, 255]
+    layer = (grayp * 255).astype(np.uint8)
+
+    r_blurred = cv.GaussianBlur(layer,(21,21),3)
+    cv.imshow("Red Layer", r_blurred)
+    circles = cv.HoughCircles(r_blurred,cv.HOUGH_GRADIENT,1,10,
+                            param1=25,param2=20,minRadius=10,maxRadius=45)
+
+    if circles is not None:
+        image_height, image_width = image.shape[:2]
+        image_center = np.array([image_width / 2, image_height / 2])
+        candidates = circles[0]
+        distances_squared = np.sum(
+            (candidates[:, :2] - image_center) ** 2,
+            axis=1,
+        )
+        closest_circle = candidates[np.argmin(distances_squared)]
+        return np.uint16(np.around(closest_circle))
+
+    return None
 
 def detect_iris(image):
     b,g,r = cv.split(image)
-    r_blurred = cv.GaussianBlur(b,(21,21),3)
+
+    layer = r
+
+    low, high = np.percentile(layer, (1, 99))
+
+    grayi = np.clip((layer.astype(np.float32) - low) / (high - low), 0, 1)
+    grayi = (grayi * 255).astype(np.uint8)
+
+    r_blurred = cv.GaussianBlur(grayi,(43,43),7)
     circles = cv.HoughCircles(r_blurred,cv.HOUGH_GRADIENT,1,50,
-                            param1=50,param2=25,minRadius=95,maxRadius=140)
+                            param1=25,param2=30,minRadius=90,maxRadius=150)
     
     if circles is not None:
         circles = np.uint16(np.around(circles))
@@ -28,13 +63,36 @@ def detect_iris(image):
     
 
 if __name__ == "__main__":
-    image = "dataset/1/1.jpg"
+    # # Test the detect_pupil function on a sample image
+    image = "iris_detection_results/1/1.jpg"
     img = cv.imread(image)
-    circles_pupil = detect_pupil(img)
+    b,g,r = cv.split(img)
+    
+    layer = r
 
-    if circles_pupil is not None:
-        for x, y, r in circles_pupil[0]:
-            x, y, r = int(x), int(y), int(r)
+    low, high = np.percentile(layer, (1, 99))
+    
+    # Normalize and clip to [0, 1]
+    gray_norm = np.clip(
+        (layer.astype(np.float32) - low) / (high - low),
+        0,
+        1
+    )
+
+    # Apply gamma = 0.5
+    grayp = np.power(gray_norm, 0.5)
+
+    # Convert back to uint8 [0, 255]
+    layer = (grayp * 255).astype(np.uint8)
+
+    r_blurred = cv.GaussianBlur(layer,(21,21),3)
+    cv.imshow("Red Layer", r_blurred)
+    circles = cv.HoughCircles(r_blurred,cv.HOUGH_GRADIENT,1,10,
+                            param1=25,param2=15,minRadius=10,maxRadius=45)
+
+    if circles is not None:
+        for circle in circles[0,:]:
+            x, y, r = map(int, circle)
             # outer circle
             cv.circle(img, (x, y), r, (0, 255, 0), 2)
             # center point
@@ -42,38 +100,80 @@ if __name__ == "__main__":
     else:
         print("No pupil circles detected")
 
-    cv.imwrite("dataset/1/1_pupil.jpg", img)
-
-    # image = cv.imread("14-1.tiff")
-    # # cv.imshow("Image1",image)
-
-    # b,g,r = cv.split(image)
+    cv.imwrite("iris_detection_results/1/1_pupil.jpg", img)
 
 
-    # # g_blurred21 = cv.GaussianBlur(r,(21,21),3)
-    # g_blurred27 = cv.GaussianBlur(r,(27,27),4)
-    # g_blurred35 = cv.GaussianBlur(r,(35,35),5)
-    # g_blurred43 = cv.GaussianBlur(r,(43,43),6)
+    # Test to detect the iris on a sample image
+    # image = "iris_detection_results/3/8.jpg"
+    # img = cv.imread(image)
+    # # circles_pupil = detect_pupil(img)
+
+    # # if circles_pupil is not None:
+    # #     x, y, r = map(int, circles_pupil)
+    # #     # outer circle
+    # #     cv.circle(img, (x, y), r, (0, 255, 0), 2)
+    # #     # center point
+    # #     cv.circle(img, (x, y), 2, (0, 0, 255), -1)
+    # # else:
+    # #     print("No pupil circles detected")
+
+    # # cv.imwrite("dataset/1/1_pupil.jpg", img)
+
+    # b,g,r = cv.split(img)
+
+    # layer = r
+    # # low, high = np.percentile(layer, (1, 99))
+    
+    # # layer = np.clip((layer.astype(np.float32) - low) / (high - low), 0, 1)
+    # # layer = (layer * 255).astype(np.uint8)
+
+    # low, high = np.percentile(layer, (1, 99))
+
+    # # Normalize and clip to [0, 1]
+    # gray_norm = np.clip(
+    #     (layer.astype(np.float32) - low) / (high - low),
+    #     0,
+    #     1
+    # )
+
+    # # Apply gamma = 0.5
+    # grayp = np.power(gray_norm, 0.5)
+
+    # # Convert back to uint8 [0, 255]
+    # layer = (grayp * 255).astype(np.uint8)
+
+    # g_blurred7 = cv.GaussianBlur(layer,(7,7),1)
+    # g_blurred14 = cv.GaussianBlur(layer,(15,15),2)
+    # g_blurred21 = cv.GaussianBlur(layer,(21,21),3)
+    # g_blurred27 = cv.GaussianBlur(layer,(27,27),4)
+    # g_blurred35 = cv.GaussianBlur(layer,(35,35),5)
+    # g_blurred43 = cv.GaussianBlur(layer,(43,43),7)
+    # g_blurred51 = cv.GaussianBlur(layer,(51,51),8)
 
     # # # Canny Detection Test
-    # cannyT = 50
-    # # edges21 = cv.Canny(g_blurred21,cannyT,cannyT/2)
-    # edges27 = cv.Canny(g_blurred27,cannyT,cannyT/2)
-    # edges35 = cv.Canny(g_blurred35,cannyT,cannyT/2)
-    # edges43 = cv.Canny(g_blurred43,cannyT,cannyT/2)
-    # plt.subplot(221),plt.imshow(image)
-    # plt.title('Original Image'), plt.xticks([]), plt.yticks([])
-    # plt.subplot(222),plt.imshow(edges27,cmap = 'gray')
-    # plt.title('Edge Image'), plt.xticks([]), plt.yticks([])
-    # plt.subplot(223),plt.imshow(edges35,cmap = 'gray')
-    # plt.title('Edge Image'), plt.xticks([]), plt.yticks([])
-    # plt.subplot(224),plt.imshow(edges43,cmap = 'gray')
-    # plt.title('Edge Image'), plt.xticks([]), plt.yticks([])
-    # plt.show()
+    # cannyT = 25
+    # edges7 = cv.Canny(g_blurred7,cannyT/2,cannyT)
+    # edges14 = cv.Canny(g_blurred14,cannyT/2,cannyT)
+    # edges21 = cv.Canny(g_blurred21,cannyT/2,cannyT)
+    # edges27 = cv.Canny(g_blurred27,cannyT/2,cannyT)
+    # edges35 = cv.Canny(g_blurred35,cannyT/2,cannyT)
+    # edges51 = cv.Canny(g_blurred51,cannyT/2,cannyT)
 
-    # # Circle detection test
-    # circles = cv.HoughCircles(g_blurred43,cv.HOUGH_GRADIENT,1,40,
-    #                         param1=cannyT,param2=20,minRadius=80,maxRadius=110)
+    # plt.subplot(221),plt.imshow(img)
+    # plt.title('Original Image'), plt.xticks([]), plt.yticks([])
+    # plt.subplot(222),plt.imshow(edges7,cmap = 'gray')
+    # plt.title('Edge Image'), plt.xticks([]), plt.yticks([])
+    # plt.subplot(223),plt.imshow(edges14,cmap = 'gray')
+    # plt.title('Edge Image'), plt.xticks([]), plt.yticks([])
+    # plt.subplot(224),plt.imshow(edges21,cmap = 'gray')
+    # plt.title('Edge Image'), plt.xticks([]), plt.yticks([])
+    # plt.tight_layout()
+    # plt.show()
+    # plt.close("all")
+    
+    # Circle detection test
+    # circles = cv.HoughCircles(g_blurred35,cv.HOUGH_GRADIENT,1,50,
+    #                         param1=cannyT,param2=30,minRadius=90,maxRadius=150)
 
     # # circles = cv.HoughCircles(g_blurred,cv.HOUGH_GRADIENT_ALT,1,5,
     # #                         param1=54,param2=0.8,minRadius=0,maxRadius=0)
@@ -88,15 +188,19 @@ if __name__ == "__main__":
     #     # draw the center of the circle
     #     cv.circle(cimg,(i[0],i[1]),2,(0,0,255),3)
 
-    # # circle = detect_iris(image)
-    # # if circle is not None:
-    # #     print(circle)
-    # #     # draw the outer circle
-    # #     cv.circle(image,(circle[0],circle[1]),circle[2],(0,255,0),2)
-    # #     # draw the center of the circle
-    # #     cv.circle(image,(circle[0],circle[1]),2,(0,0,255),3)
+    # circle = detect_iris(g_blurred35)
+    # if circles is not None:
+    #     print(circles)
+    #     x, y, r = map(int, circles)
+    #     # outer circle
+    #     cv.circle(img, (x, y), r, (0, 255, 0), 2)
+    #     # center point
+    #     cv.circle(img, (x, y), 2, (0, 0, 255), -1)
+    #     # print("No pupil circles detected")
 
-    # cv.imshow("Green Layer", cimg)
+    # cv.imshow("Green Layer", img)
 
     # cv.waitKey(0)
     # cv.destroyAllWindows()
+
+

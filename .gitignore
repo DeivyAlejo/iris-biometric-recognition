@@ -5,3 +5,4 @@ __pycache__/
 .venv/
 clean_dataset.py
 tok.txt
+iris_detection_results/

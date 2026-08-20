@@ -40,6 +40,15 @@ for i in range(20):
             print(f"No iris detected in {img}")
             output = image
 
+        # circle_pupil = preprocessing_image.detect_pupil(output)
+        # if circle_pupil is not None:
+        #     x, y, r = map(int, circle_pupil)
+        #     # outer circle
+        #     cv.circle(output, (x, y), r, (0, 255, 0), 2)
+        #     # center point
+        #     cv.circle(output, (x, y), 2, (0, 0, 255), -1)
+        #     print("No pupil circles detected")
+    
         cv.imwrite(f"dataset/{i+1}/{base_name}.jpg", output)
         # cv.imshow(img, image)
 
